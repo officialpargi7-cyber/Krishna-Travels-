@@ -3,7 +3,7 @@ name: Build Krishna Travels APK
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, master]
 
 permissions:
   contents: read
@@ -22,16 +22,28 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Extract Android project
+      - name: Detect Android project
+        shell: bash
         run: |
-          unzip -o krishna-travels-github-ready.zip -d project
+          if [ -f ./gradlew ]; then
+            echo "PROJECT_DIR=." >> "$GITHUB_ENV"
+          elif [ -f ./project/gradlew ]; then
+            echo "PROJECT_DIR=project" >> "$GITHUB_ENV"
+          else
+            echo "No Android project or Gradle wrapper found in the repository." >&2
+            exit 1
+          fi
 
       - name: Build APK
+        shell: bash
         run: |
-          gradle --no-daemon -p project assembleDebug
+          PROJECT_DIR="${PROJECT_DIR:-.}"
+          chmod +x "$PROJECT_DIR/gradlew"
+          "$PROJECT_DIR/gradlew" --no-daemon assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Krishna-Travels-APK
-          path: project/app/build/outputs/apk/debug/*.apk
+          name: krishna-travels-debug-apk
+          path: |
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
