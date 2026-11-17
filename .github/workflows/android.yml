@@ -27,8 +27,17 @@ jobs:
         run: |
           PROJECT_DIR=""
 
-          if [ -f ./gradlew ] || [ -f ./settings.gradle ] || [ -f ./settings.gradle.kts ] || [ -f ./build.gradle ] || [ -f ./build.gradle.kts ]; then
-            PROJECT_DIR="."
+          detect_project() {
+            local dir="$1"
+            if [ -f "$dir/gradlew" ] || [ -f "$dir/settings.gradle" ] || [ -f "$dir/settings.gradle.kts" ] || [ -f "$dir/build.gradle" ] || [ -f "$dir/build.gradle.kts" ]; then
+              PROJECT_DIR="$dir"
+              return 0
+            fi
+            return 1
+          }
+
+          if detect_project "."; then
+            :
           else
             for candidate in ./*; do
               if [ -d "$candidate" ] && { [ -f "$candidate/gradlew" ] || [ -f "$candidate/settings.gradle" ] || [ -f "$candidate/settings.gradle.kts" ] || [ -f "$candidate/build.gradle" ] || [ -f "$candidate/build.gradle.kts" ]; }; then
@@ -36,6 +45,29 @@ jobs:
                 break
               fi
             done
+          fi
+
+          if [ -z "$PROJECT_DIR" ]; then
+            unzip_dir="/tmp/krishna-travels-project"
+            rm -rf "$unzip_dir"
+            mkdir -p "$unzip_dir"
+
+            shopt -s nullglob
+            zip_files=(./*.zip)
+            shopt -u nullglob
+
+            if [ "${#zip_files[@]}" -gt 0 ]; then
+              for zip_file in "${zip_files[@]}"; do
+                unzip -q "$zip_file" -d "$unzip_dir"
+              done
+
+              for candidate in "$unzip_dir"/*; do
+                if [ -d "$candidate" ] && { [ -f "$candidate/gradlew" ] || [ -f "$candidate/settings.gradle" ] || [ -f "$candidate/settings.gradle.kts" ] || [ -f "$candidate/build.gradle" ] || [ -f "$candidate/build.gradle.kts" ]; }; then
+                  PROJECT_DIR="$candidate"
+                  break
+                fi
+              done
+            fi
           fi
 
           if [ -z "$PROJECT_DIR" ]; then
@@ -58,4 +90,3 @@ jobs:
           name: krishna-travels-debug-apk
           path: |
             ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
-            
