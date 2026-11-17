@@ -25,14 +25,25 @@ jobs:
       - name: Detect Android project
         shell: bash
         run: |
-          if [ -f ./gradlew ]; then
-            echo "PROJECT_DIR=." >> "$GITHUB_ENV"
-          elif [ -f ./project/gradlew ]; then
-            echo "PROJECT_DIR=project" >> "$GITHUB_ENV"
+          PROJECT_DIR=""
+
+          if [ -f ./gradlew ] || [ -f ./settings.gradle ] || [ -f ./settings.gradle.kts ] || [ -f ./build.gradle ] || [ -f ./build.gradle.kts ]; then
+            PROJECT_DIR="."
           else
+            for candidate in ./*; do
+              if [ -d "$candidate" ] && { [ -f "$candidate/gradlew" ] || [ -f "$candidate/settings.gradle" ] || [ -f "$candidate/settings.gradle.kts" ] || [ -f "$candidate/build.gradle" ] || [ -f "$candidate/build.gradle.kts" ]; }; then
+                PROJECT_DIR="$candidate"
+                break
+              fi
+            done
+          fi
+
+          if [ -z "$PROJECT_DIR" ]; then
             echo "No Android project or Gradle wrapper found in the repository." >&2
             exit 1
           fi
+
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
       - name: Build APK
         shell: bash
@@ -47,3 +58,4 @@ jobs:
           name: krishna-travels-debug-apk
           path: |
             ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
+            
